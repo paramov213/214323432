@@ -2,151 +2,179 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Colony OS: Persistent Edition</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>Colony Game v2</title>
     <style>
-        :root { --bg: #05070a; --card: #111418; --accent: #00d2ff; --money: #2ecc71; --text: #e0e0e0; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; margin: 0; height: 100vh; overflow: hidden; }
-        .sidebar { width: 320px; background: var(--card); padding: 20px; border-right: 1px solid #222; display: flex; flex-direction: column; }
-        .main { flex: 1; padding: 25px; overflow-y: auto; background: radial-gradient(circle at top right, #0a1520, #05070a); }
-        .card { background: #1a1e23; padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; }
-        .chat-box { flex: 1; background: #000; border: 1px solid #222; margin-top: 15px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #0f0; }
-        input { background: #000; border: 1px solid #333; color: #fff; padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 4px; }
-        .btn { cursor: pointer; border: none; padding: 12px; border-radius: 6px; font-weight: bold; background: var(--accent); color: #000; transition: 0.2s; width: 100%; }
-        .btn:hover { filter: brightness(1.2); }
-        #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .stat-label { font-size: 0.8em; opacity: 0.6; text-transform: uppercase; }
+        :root { --neon: #00f2ff; --pink: #ff0055; --gold: #ffcc00; --bg: #0d1117; }
+        body { background: var(--bg); color: #c9d1d9; font-family: 'Segoe UI', sans-serif; margin: 0; }
+        .grid { display: grid; grid-template-columns: 300px 1fr 350px; gap: 20px; padding: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; }
+        .stat-box { font-size: 1.2rem; margin-bottom: 10px; }
+        .val { color: var(--neon); font-weight: bold; }
+        button { background: #21262d; color: white; border: 1px solid #f0f6fc1a; padding: 10px; cursor: pointer; width: 100%; border-radius: 6px; margin: 5px 0; }
+        button:hover { background: #30363d; border-color: var(--neon); }
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .admin-only { border: 2px solid var(--gold); display: none; margin-top: 15px; }
+        .banned { display: none; text-align: center; color: var(--pink); font-size: 3rem; margin-top: 20%; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div class="card" style="width: 300px; text-align: center;">
-        <h2 style="color:var(--accent); margin-bottom: 20px;">COLONY OS</h2>
-        <input type="text" id="log" placeholder="Введите логин">
-        <input type="password" id="pas" placeholder="Введите пароль">
-        <button class="btn" id="auth-btn">ВОЙТИ / СОЗДАТЬ АККАУНТ</button>
+        <h2>Вход в Систему</h2>
+        <input type="text" id="username-input" placeholder="Ваш позывной..." style="padding: 10px; width: 80%;">
+        <button onclick="login()">Начать Колонизацию</button>
     </div>
 </div>
 
-<div class="sidebar">
-    <h2 id="display-name" style="color:var(--accent); margin:0;">Загрузка...</h2>
-    <div class="card" style="margin-top:20px; border-left: 4px solid var(--money);">
-        <div class="stat-label">Ваш баланс</div>
-        <h2 id="cash-val" style="color:var(--money); margin:5px 0;">$0</h2>
-    </div>
-    
-    <div class="chat-box" id="chat"></div>
-    <input type="text" id="chat-msg" placeholder="Написать сообщение..." style="margin-top:10px;">
-    
-    <button class="btn" style="background:#e74c3c; color:#fff; margin-top:20px;" id="admin-btn">ADMIN PANEL</button>
-</div>
+<div id="ban-screen" class="banned">ВЫ ИЗГНАНЫ ИЗ КОЛОНИИ (BANNED)</div>
 
-<div class="main">
-    <h3 style="opacity:0.7;">ДОСТУПНЫЕ ТЕХНОЛОГИИ</h3>
-    <div id="market-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;"></div>
-    
-    <h3 style="margin-top:40px; opacity:0.7;">ВАША КОРПОРАЦИЯ</h3>
-    <div id="my-assets" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;"></div>
+<div id="game-ui" style="display:none;">
+    <header style="padding: 20px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between;">
+        <div class="stat-box">Колонист: <span id="display-name" class="val">?</span></div>
+        <div class="stat-box">Баланс: <span id="display-money" class="val" style="color:#4f4">0</span> ₮</div>
+        <div class="stat-box">Энергия: <span id="display-energy" class="val">0</span> MWh</div>
+        <button onclick="showAdmin()" style="width: auto;">Admin</button>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Промышленность</h3>
+            <button onclick="buyAsset('Mini-Solar', 1200, 15, 40)">Солнечная панель (1200₮)</button>
+            <button onclick="buyAsset('Wind-Turbine', 3000, 40, 100)">Ветряк (3000₮)</button>
+            <button onclick="buyAsset('Nuclear-Cell', 15000, 500, 1000)">Ядерная ячейка (15к ₮)</button>
+            <hr style="border-color: #333;">
+            <div id="asset-list"></div>
+        </div>
+
+        <div class="card">
+            <h3>Глобальный Рынок</h3>
+            <div style="text-align: center; font-size: 4rem; margin: 20px 0;" id="market-price">0 ₮</div>
+            <p>Текущий множитель дохода: <span id="display-mult" class="val">1</span>x</p>
+            <button onclick="sellEnergy()" style="height: 60px; font-size: 1.2rem; color: #4f4;">ПРОДАТЬ 50 MWh</button>
+            <div id="log-box" style="height: 150px; overflow-y: auto; background: #000; padding: 10px; font-size: 0.8rem; margin-top: 20px;"></div>
+        </div>
+
+        <div class="card">
+            <h3>Список игроков (Live)</h3>
+            <div id="player-list"></div>
+            
+            <div id="admin-panel" class="card admin-only">
+                <h4 style="color: var(--gold);">Console: Admin</h4>
+                <input type="text" id="admin-target" placeholder="Имя игрока">
+                <button onclick="adminAction('ban')">Забанить</button>
+                <button onclick="adminAction('giveMoney', 50000)">Дать 50к ₮</button>
+                <button onclick="adminAction('setMultiplier', 10)">Включить X10</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Ждем полной загрузки страницы
-    window.onload = () => {
-        const socket = io();
-        console.log("Клиент запущен, ожидание сокета...");
+    let currentUser = null;
+    let localPlayer = { money: 0, energy: 0, assets: [] };
+    let world = {};
+    let adminPass = "";
 
-        // Элементы
-        const authBtn = document.getElementById('auth-btn');
-        const adminBtn = document.getElementById('admin-btn');
-        const chatInput = document.getElementById('chat-msg');
+    async function login() {
+        const name = document.getElementById('username-input').value;
+        if (!name) return;
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: name })
+        });
+        const data = await res.json();
+        currentUser = name;
+        localPlayer = data.user;
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'block';
+        document.getElementById('display-name').innerText = name;
+        startLoops();
+    }
 
-        // ФУНКЦИЯ АВТОРИЗАЦИИ
-        authBtn.onclick = () => {
-            const username = document.getElementById('log').value.trim();
-            const password = document.getElementById('pas').value.trim();
-            
-            if (username && password) {
-                console.log("Попытка входа:", username);
-                socket.emit('auth', { username, password });
-            } else {
-                alert("Заполните логин и пароль!");
+    function buyAsset(name, cost, gen, inc) {
+        if (localPlayer.money >= cost) {
+            localPlayer.money -= cost;
+            localPlayer.assets.push({ name, gen, inc });
+            addLog(`Куплено: ${name}`);
+        }
+    }
+
+    function sellEnergy() {
+        if (localPlayer.energy >= 50) {
+            localPlayer.energy -= 50;
+            localPlayer.money += 50 * world.globalPrice;
+            addLog(`Продано 50 MWh за ${Math.floor(50 * world.globalPrice)}₮`);
+        }
+    }
+
+    async function sync() {
+        try {
+            const res = await fetch('/api/sync', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: currentUser, data: localPlayer })
+            });
+            const data = await res.json();
+            if (data.banned) {
+                document.getElementById('game-ui').style.display = 'none';
+                document.getElementById('ban-screen').style.display = 'block';
+                return;
             }
-        };
+            world = data;
+            updateUI();
+        } catch(e) { console.log("Sync error"); }
+    }
 
-        // СОБЫТИЯ СОКЕТОВ
-        socket.on('init', data => {
-            console.log("Данные получены:", data);
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('display-name').innerText = data.player.username;
-            
-            const mList = document.getElementById('market-list');
-            mList.innerHTML = data.market.map(item => `
-                <div class="card">
-                    <b>${item.name}</b><br>
-                    <span style="color:var(--money)">$${item.price.toLocaleString()}</span><br>
-                    <small>Прибыль: $${item.profit}/с</small><br>
-                    <button class="btn" style="font-size:10px; padding:8px; margin-top:10px;" 
-                        onclick="window.buyBiz(${item.id})">ИНВЕСТИРОВАТЬ</button>
-                </div>
-            `).join('');
-        });
-
-        // Глобальная функция для покупки (чтобы работала из onclick в строке)
-        window.buyBiz = (id) => {
-            socket.emit('buy_request', id);
-        };
-
-        socket.on('update_data', p => {
-            document.getElementById('cash-val').innerText = '$' + Math.floor(p.cash).toLocaleString();
-            const assetsList = document.getElementById('my-assets');
-            assetsList.innerHTML = p.owned.map(i => `
-                <div class="card" style="border-left: 2px solid var(--money); padding: 10px;">
-                    <b>${i.name}</b><br><small>+$${i.profit}/сек</small>
-                </div>
-            `).join('');
-        });
-
-        // ЧАТ
-        window.sendChat = () => {
-            if (chatInput.value) {
-                socket.emit('send_chat', chatInput.value);
-                chatInput.value = '';
-            }
-        };
-
-        chatInput.onkeypress = (e) => { if(e.key === 'Enter') window.sendChat(); };
-
-        socket.on('chat_msg', d => {
-            const chatBox = document.getElementById('chat');
-            chatBox.innerHTML += `<div><span style="color:var(--accent)">[${d.user}]</span>: ${d.text}</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-
-        // АДМИНКА
-        adminBtn.onclick = () => {
-            const login = prompt("Admin Login:");
-            const pass = prompt("Admin Pass:");
-            socket.emit('admin_login', { login, pass });
-        };
-
-        socket.on('admin_auth_success', () => {
-            const target = prompt("Ник игрока для действия:");
-            const action = prompt("Действие: cash (+$10k) / ban");
-            if(action) {
-                socket.emit('admin_cmd', { 
-                    type: action === 'cash' ? 'add_cash' : 'ban', 
-                    target: target 
-                });
-            }
-        });
-
-        socket.on('event', d => alert(d.msg));
+    function updateUI() {
+        document.getElementById('display-money').innerText = Math.floor(localPlayer.money);
+        document.getElementById('display-energy').innerText = Math.floor(localPlayer.energy);
+        document.getElementById('market-price').innerText = Math.floor(world.globalPrice) + ' ₮';
+        document.getElementById('display-mult').innerText = world.multiplier;
         
-        socket.on('connect_error', () => {
-            console.error("Ошибка подключения к серверу Render!");
+        // Список активов
+        document.getElementById('asset-list').innerHTML = localPlayer.assets.map(a => 
+            `<div style="font-size:0.8rem; border-bottom:1px solid #333">${a.name} (+${a.inc}₮/с)</div>`).join('');
+
+        // События
+        document.getElementById('log-box').innerHTML = world.events.map(e => `<div>> ${e}</div>`).reverse().join('');
+
+        // Список игроков
+        document.getElementById('player-list').innerHTML = Object.keys(world.players).map(p => 
+            `<div>${p} - ${Math.floor(world.players[p].money)}₮ ${world.players[p].isBanned ? '❌' : '✅'}</div>`).join('');
+    }
+
+    function addLog(msg) {
+        const lb = document.getElementById('log-box');
+        lb.innerHTML = `<div>> ${msg}</div>` + lb.innerHTML;
+    }
+
+    function showAdmin() {
+        adminPass = prompt("Admin Password?");
+        if (adminPass === 'admin1337') document.getElementById('admin-panel').style.display = 'block';
+    }
+
+    async function adminAction(command, value = null) {
+        const target = document.getElementById('admin-target').value;
+        await fetch('/api/admin/command', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ password: adminPass, command, target, value: value || 10 })
         });
-    };
+        sync();
+    }
+
+    function startLoops() {
+        setInterval(() => {
+            localPlayer.assets.forEach(a => {
+                localPlayer.energy += a.gen / 10;
+                localPlayer.money += (a.inc * world.multiplier) / 10;
+            });
+            updateUI();
+        }, 1000);
+        setInterval(sync, 2000); // Синхрон с сервером каждые 2 сек
+    }
 </script>
 </body>
 </html>
