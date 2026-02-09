@@ -11,99 +11,142 @@
         .main { flex: 1; padding: 25px; overflow-y: auto; background: radial-gradient(circle at top right, #0a1520, #05070a); }
         .card { background: #1a1e23; padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 15px; }
         .chat-box { flex: 1; background: #000; border: 1px solid #222; margin-top: 15px; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #0f0; }
-        input { background: #000; border: 1px solid #333; color: #fff; padding: 10px; width: 100%; box-sizing: border-box; }
-        .btn { cursor: pointer; border: none; padding: 12px; border-radius: 6px; font-weight: bold; background: var(--accent); color: #000; margin-top: 5px; }
+        input { background: #000; border: 1px solid #333; color: #fff; padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 4px; }
+        .btn { cursor: pointer; border: none; padding: 12px; border-radius: 6px; font-weight: bold; background: var(--accent); color: #000; transition: 0.2s; width: 100%; }
+        .btn:hover { filter: brightness(1.2); }
         #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .stat-label { font-size: 0.8em; opacity: 0.6; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
     <div class="card" style="width: 300px; text-align: center;">
-        <h2 style="color:var(--accent)">COLONY OS</h2>
-        <input type="text" id="log" placeholder="Логин" style="margin-bottom:10px;">
-        <input type="password" id="pas" placeholder="Пароль" style="margin-bottom:20px;">
-        <button class="btn" onclick="auth()" style="width:100%">ВОЙТИ / РЕГИСТРАЦИЯ</button>
+        <h2 style="color:var(--accent); margin-bottom: 20px;">COLONY OS</h2>
+        <input type="text" id="log" placeholder="Введите логин">
+        <input type="password" id="pas" placeholder="Введите пароль">
+        <button class="btn" id="auth-btn">ВОЙТИ / СОЗДАТЬ АККАУНТ</button>
     </div>
 </div>
 
 <div class="sidebar">
-    <h2 id="display-name" style="color:var(--accent); margin:0;">Пользователь</h2>
+    <h2 id="display-name" style="color:var(--accent); margin:0;">Загрузка...</h2>
     <div class="card" style="margin-top:20px; border-left: 4px solid var(--money);">
-        <small>БАЛАНС</small>
+        <div class="stat-label">Ваш баланс</div>
         <h2 id="cash-val" style="color:var(--money); margin:5px 0;">$0</h2>
     </div>
     
     <div class="chat-box" id="chat"></div>
-    <input type="text" id="chat-msg" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendChat()" style="margin-top:10px;">
+    <input type="text" id="chat-msg" placeholder="Написать сообщение..." style="margin-top:10px;">
     
-    <button class="btn" style="background:#e74c3c; color:#fff; margin-top:20px;" onclick="adminPanel()">ADMIN PANEL</button>
+    <button class="btn" style="background:#e74c3c; color:#fff; margin-top:20px;" id="admin-btn">ADMIN PANEL</button>
 </div>
 
 <div class="main">
-    <h3 style="opacity:0.7;">МАГАЗИН ФРАНШИЗ</h3>
+    <h3 style="opacity:0.7;">ДОСТУПНЫЕ ТЕХНОЛОГИИ</h3>
     <div id="market-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;"></div>
     
-    <h3 style="margin-top:40px; opacity:0.7;">МОИ ОБЪЕКТЫ</h3>
+    <h3 style="margin-top:40px; opacity:0.7;">ВАША КОРПОРАЦИЯ</h3>
     <div id="my-assets" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;"></div>
 </div>
 
 <script>
-    const socket = io();
+    // Ждем полной загрузки страницы
+    window.onload = () => {
+        const socket = io();
+        console.log("Клиент запущен, ожидание сокета...");
 
-    function auth() {
-        const username = document.getElementById('log').value;
-        const password = document.getElementById('pas').value;
-        if(username && password) socket.emit('auth', { username, password });
-    }
+        // Элементы
+        const authBtn = document.getElementById('auth-btn');
+        const adminBtn = document.getElementById('admin-btn');
+        const chatInput = document.getElementById('chat-msg');
 
-    socket.on('init', data => {
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('display-name').innerText = data.player.username;
-        const mList = document.getElementById('market-list');
-        mList.innerHTML = data.market.map(item => `
-            <div class="card">
-                <b>${item.name}</b><br>
-                <span style="color:var(--money)">$${item.price}</span><br>
-                <small>Доход: $${item.profit}/с</small><br>
-                <button class="btn" style="font-size:10px; padding:5px; width:100%;" onclick="socket.emit('buy_request', ${item.id})">КУПИТЬ</button>
-            </div>
-        `).join('');
-    });
+        // ФУНКЦИЯ АВТОРИЗАЦИИ
+        authBtn.onclick = () => {
+            const username = document.getElementById('log').value.trim();
+            const password = document.getElementById('pas').value.trim();
+            
+            if (username && password) {
+                console.log("Попытка входа:", username);
+                socket.emit('auth', { username, password });
+            } else {
+                alert("Заполните логин и пароль!");
+            }
+        };
 
-    socket.on('update_data', p => {
-        document.getElementById('cash-val').innerText = '$' + Math.floor(p.cash).toLocaleString();
-        document.getElementById('my-assets').innerHTML = p.owned.map(i => `
-            <div class="card" style="border-left: 2px solid var(--money); padding: 10px;">
-                <b>${i.name}</b><br><small>+$${i.profit}/с</small>
-            </div>
-        `).join('');
-    });
+        // СОБЫТИЯ СОКЕТОВ
+        socket.on('init', data => {
+            console.log("Данные получены:", data);
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('display-name').innerText = data.player.username;
+            
+            const mList = document.getElementById('market-list');
+            mList.innerHTML = data.market.map(item => `
+                <div class="card">
+                    <b>${item.name}</b><br>
+                    <span style="color:var(--money)">$${item.price.toLocaleString()}</span><br>
+                    <small>Прибыль: $${item.profit}/с</small><br>
+                    <button class="btn" style="font-size:10px; padding:8px; margin-top:10px;" 
+                        onclick="window.buyBiz(${item.id})">ИНВЕСТИРОВАТЬ</button>
+                </div>
+            `).join('');
+        });
 
-    socket.on('chat_msg', d => {
-        const c = document.getElementById('chat');
-        c.innerHTML += `<div><b>${d.user}:</b> ${d.text}</div>`;
-        c.scrollTop = c.scrollHeight;
-    });
+        // Глобальная функция для покупки (чтобы работала из onclick в строке)
+        window.buyBiz = (id) => {
+            socket.emit('buy_request', id);
+        };
 
-    function sendChat() {
-        const inp = document.getElementById('chat-msg');
-        if(inp.value) { socket.emit('send_chat', inp.value); inp.value = ''; }
-    }
+        socket.on('update_data', p => {
+            document.getElementById('cash-val').innerText = '$' + Math.floor(p.cash).toLocaleString();
+            const assetsList = document.getElementById('my-assets');
+            assetsList.innerHTML = p.owned.map(i => `
+                <div class="card" style="border-left: 2px solid var(--money); padding: 10px;">
+                    <b>${i.name}</b><br><small>+$${i.profit}/сек</small>
+                </div>
+            `).join('');
+        });
 
-    function adminPanel() {
-        const login = prompt("Логин:");
-        const pass = prompt("Пароль:");
-        socket.emit('admin_login', { login, pass });
-    }
+        // ЧАТ
+        window.sendChat = () => {
+            if (chatInput.value) {
+                socket.emit('send_chat', chatInput.value);
+                chatInput.value = '';
+            }
+        };
 
-    socket.on('admin_auth_success', () => {
-        const target = prompt("Ник игрока:");
-        const action = prompt("Действие: cash / ban");
-        socket.emit('admin_cmd', { type: action === 'cash' ? 'add_cash' : 'ban', target });
-    });
+        chatInput.onkeypress = (e) => { if(e.key === 'Enter') window.sendChat(); };
 
-    socket.on('event', d => alert(d.msg));
+        socket.on('chat_msg', d => {
+            const chatBox = document.getElementById('chat');
+            chatBox.innerHTML += `<div><span style="color:var(--accent)">[${d.user}]</span>: ${d.text}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+
+        // АДМИНКА
+        adminBtn.onclick = () => {
+            const login = prompt("Admin Login:");
+            const pass = prompt("Admin Pass:");
+            socket.emit('admin_login', { login, pass });
+        };
+
+        socket.on('admin_auth_success', () => {
+            const target = prompt("Ник игрока для действия:");
+            const action = prompt("Действие: cash (+$10k) / ban");
+            if(action) {
+                socket.emit('admin_cmd', { 
+                    type: action === 'cash' ? 'add_cash' : 'ban', 
+                    target: target 
+                });
+            }
+        });
+
+        socket.on('event', d => alert(d.msg));
+        
+        socket.on('connect_error', () => {
+            console.error("Ошибка подключения к серверу Render!");
+        });
+    };
 </script>
 </body>
 </html>
