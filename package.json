@@ -1,12 +1,12 @@
 {
-  "name": "colony-local-save",
-  "version": "2.0.0",
+  "name": "colony-energy-game",
+  "version": "1.1.0",
+  "description": "Sci-Fi Energy Business Simulator with Multi-Player",
   "main": "server.js",
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
-  },
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
   }
 }
