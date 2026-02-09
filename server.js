@@ -1,115 +1,75 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const fs = require('fs');
 const path = require('path');
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const PORT = process.env.PORT || 3000;
 
-const DB_FILE = './database.json';
+app.use(express.json());
+app.use(express.static('public'));
 
-// --- ЗАГРУЗКА ДАННЫХ ИЗ ФАЙЛА ---
-let players = {};
-if (fs.existsSync(DB_FILE)) {
-    const data = fs.readFileSync(DB_FILE);
-    players = JSON.parse(data);
-    console.log("✅ Данные игроков загружены из файла");
-}
-
-// Функция сохранения
-const saveToDisk = () => {
-    fs.writeFileSync(DB_FILE, JSON.stringify(players, null, 2));
+// Глобальное состояние сервера
+let worldState = {
+    globalPrice: 150,
+    multiplier: 1,
+    events: ["Сервер запущен. Добро пожаловать в Энергокризис."],
+    players: {} // Хранилище: { "username": { money, energy, assets, isBanned } }
 };
 
-const market = [
-    { id: 1, name: "Киоск с едой", price: 800, profit: 25 },
-    { id: 2, name: "АЗС Гравитация", price: 4000, profit: 120 },
-    { id: 3, name: "Завод роботов", price: 15000, profit: 550 },
-    { id: 4, name: "Квантовый Хаб", price: 50000, profit: 2100 }
-];
+// --- API ДЛЯ ИГРОКОВ ---
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-io.on('connection', (socket) => {
+// Регистрация или вход
+app.post('/api/login', (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: "Имя не указано" });
     
-    socket.on('auth', (data) => {
-        if (!players[data.username]) {
-            players[data.username] = {
-                username: data.username,
-                password: data.password,
-                cash: 2500,
-                owned: [],
-                isBanned: false
-            };
-            saveToDisk();
-        } else if (players[data.username].password !== data.password) {
-            return socket.emit('event', { msg: "Неверный пароль!" });
-        }
-        
-        socket.username = data.username;
-        socket.emit('init', { player: players[socket.username], market: market });
-        io.emit('chat_msg', { user: 'SYSTEM', text: `${socket.username} вошел.` });
-    });
-
-    socket.on('buy_request', (bizId) => {
-        const p = players[socket.username];
-        const biz = market.find(m => m.id === bizId);
-        if (p && biz && p.cash >= biz.price && !p.isBanned) {
-            p.cash -= biz.price;
-            p.owned.push(biz);
-            saveToDisk();
-            socket.emit('update_data', p);
-        }
-    });
-
-    socket.on('send_chat', (text) => {
-        if (socket.username) io.emit('chat_msg', { user: socket.username, text });
-    });
-
-    // --- АДМИНКА (paramov / 565811) ---
-    socket.on('admin_login', (data) => {
-        if (data.login === "paramov" && data.pass === "565811") {
-            socket.isAdmin = true;
-            socket.emit('admin_auth_success');
-        } else {
-            socket.emit('event', { msg: "Доступ запрещен!" });
-        }
-    });
-
-    socket.on('admin_cmd', (data) => {
-        if (!socket.isAdmin) return;
-        const target = players[data.target];
-        if (target) {
-            if (data.type === 'add_cash') target.cash += 10000;
-            if (data.type === 'ban') target.isBanned = true;
-            saveToDisk();
-            socket.emit('event', { msg: `Команда для ${data.target} выполнена` });
-        }
-    });
+    if (!worldState.players[username]) {
+        worldState.players[username] = {
+            money: 5000,
+            energy: 100,
+            assets: [],
+            isBanned: false,
+            lastSeen: Date.now()
+        };
+        worldState.events.push(`Новый колонист: ${username}`);
+    }
+    res.json({ user: worldState.players[username], world: worldState });
 });
 
-// Ежесекундный доход и сохранение раз в 10 сек
+// Синхронизация данных игрока (Save/Load)
+app.post('/api/sync', (req, res) => {
+    const { username, data } = req.body;
+    if (worldState.players[username]) {
+        if (worldState.players[username].isBanned) {
+            return res.status(403).json({ banned: true });
+        }
+        worldState.players[username] = { ...worldState.players[username], ...data };
+        worldState.players[username].lastSeen = Date.now();
+    }
+    res.json(worldState);
+});
+
+// --- API ДЛЯ АДМИНА ---
+
+app.post('/api/admin/command', (req, res) => {
+    const { password, command, target, value } = req.body;
+    if (password !== 'admin1337') return res.status(403).json({ error: 'Hack detected!' });
+
+    if (command === 'setMultiplier') worldState.multiplier = value;
+    if (command === 'setPrice') worldState.globalPrice = value;
+    if (command === 'ban' && worldState.players[target]) {
+        worldState.players[target].isBanned = true;
+        worldState.events.push(`Игрок ${target} БЫЛ ЗАБАНЕН`);
+    }
+    if (command === 'giveMoney' && worldState.players[target]) {
+        worldState.players[target].money += Number(value);
+    }
+    
+    res.json({ success: true, world: worldState });
+});
+
+// Игровой цикл сервера (Экономика)
 setInterval(() => {
-    Object.keys(players).forEach(name => {
-        const p = players[name];
-        if (!p.isBanned && p.owned.length > 0) {
-            let income = 0;
-            p.owned.forEach(b => income += b.profit);
-            p.cash += income;
-        }
-    });
-    // Рассылаем обновления всем подключенным
-    io.sockets.sockets.forEach(s => {
-        if (s.username && players[s.username]) {
-            s.emit('update_data', players[s.username]);
-        }
-    });
-}, 1000);
+    worldState.globalPrice += (Math.random() - 0.5) * 6;
+    if (worldState.globalPrice < 20) worldState.globalPrice = 20;
+}, 5000);
 
-// Авто-сохранение в файл каждые 10 секунд
-setInterval(saveToDisk, 10000);
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Сервер запущен на порту ${PORT}`));
+app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
