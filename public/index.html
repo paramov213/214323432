@@ -1,128 +1,108 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>MARS IMPERIAL v2.0</title>
+    <title>MARS COLONY v2.2</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono&display=swap');
-        :root { --neon: #00f2ff; --gold: #ffcc00; --bg: #030508; --card: #0d1117; }
+        :root { --neon: #00f2ff; --gold: #ffcc00; --bg: #030508; --card: #0d1117; --red: #ff4444; }
         body { background: var(--bg); color: #fff; font-family: 'Roboto Mono', monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* Боковая панель */
         .sidebar { width: 300px; background: #000; border-right: 2px solid var(--neon); padding: 20px; display: flex; flex-direction: column; }
-        .main { flex-grow: 1; display: grid; grid-template-rows: 80px 1fr 150px; }
-        
+        .main { flex-grow: 1; display: grid; grid-template-rows: 80px 1fr 100px; }
         header { background: #080a0f; display: flex; justify-content: space-around; align-items: center; border-bottom: 1px solid #222; }
-        .content { display: grid; grid-template-columns: 1fr 350px; gap: 1px; background: #1a1a1a; overflow: hidden; }
         .scroll-area { background: var(--bg); padding: 20px; overflow-y: auto; }
-
-        .biz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .biz-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 8px; transition: 0.3s; position: relative; }
-        .biz-card:hover { border-color: var(--neon); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,242,255,0.1); }
-        .biz-card.locked { opacity: 0.5; filter: grayscale(1); }
-
-        .stat-box { text-align: center; }
-        .stat-val { font-family: 'Orbitron'; font-size: 1.4rem; color: var(--neon); text-shadow: 0 0 10px rgba(0,242,255,0.3); }
-
-        button { background: #1f6feb; color: #fff; border: none; padding: 10px; cursor: pointer; font-family: 'Orbitron'; border-radius: 4px; transition: 0.2s; }
-        button:hover { background: #388bfd; }
-        button.buy { background: #238636; margin-top: 10px; width: 100%; }
-        button.buy:disabled { background: #111; color: #444; }
-
+        .biz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .biz-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 8px; }
+        .stat-val { font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon); }
+        button { background: #1f6feb; color: #fff; border: none; padding: 10px; cursor: pointer; font-family: 'Orbitron'; border-radius: 4px; }
+        .miner-btn { background: linear-gradient(45deg, #00f2ff, #0066ff); height: 60px; font-weight: bold; margin-bottom: 20px; }
+        .loan-panel { background: #1a0a0a; border: 1px solid var(--red); padding: 10px; margin-top: 10px; border-radius: 5px; }
         #auth-screen { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        input { padding: 12px; background: #111; border: 1px solid #333; color: #fff; margin: 5px; width: 250px; font-family: 'Orbitron'; }
-
-        .chat-msg { margin-bottom: 8px; font-size: 0.85rem; border-left: 2px solid var(--neon); padding-left: 8px; }
-        .tag { font-size: 0.6rem; padding: 2px 5px; background: var(--neon); color: #000; border-radius: 3px; font-weight: bold; }
+        input { padding: 10px; background: #111; border: 1px solid #333; color: #fff; margin: 5px; width: 250px; }
+        .chat-line { font-size: 0.8rem; margin-bottom: 5px; border-left: 2px solid var(--neon); padding-left: 5px; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
-    <h1 style="font-family:'Orbitron'; color:var(--neon); font-size: 2.5rem;">MARS IMPERIAL</h1>
+    <h1 style="font-family:'Orbitron'; color:var(--neon)">MARS OS v2.2</h1>
     <input type="text" id="auth-user" placeholder="ЛОГИН">
     <input type="password" id="auth-pass" placeholder="ПАРОЛЬ">
-    <button onclick="handleAuth('login')" style="width:275px; margin-top:10px;">ВОЙТИ В СИСТЕМУ</button>
+    <button onclick="handleAuth('login')" style="width:275px; margin-top:10px;">ВОЙТИ</button>
     <button onclick="handleAuth('register')" style="width:275px; margin-top:5px; background:#222;">РЕГИСТРАЦИЯ</button>
 </div>
 
 <aside class="sidebar" id="sidebar-ui" style="display:none">
-    <h2 class="stat-val" style="font-size: 1rem; margin-bottom: 20px;">МОИ ОБЪЕКТЫ</h2>
-    <div id="my-assets-list" style="flex-grow:1; overflow-y:auto; font-size:0.8rem; color:#888;"></div>
-    <hr style="border:0; border-top:1px solid #222; margin:20px 0;">
-    <div id="player-list" style="font-size:0.75rem;"></div>
+    <button class="miner-btn" onclick="manualMine()">⛏ ДОБЫЧА (10₮)</button>
+    
+    <div class="loan-panel">
+        <small style="color:var(--red)">КРЕДИТ</small>
+        <div id="loan-info" style="font-size:0.8rem;">Долг: 0₮</div>
+        <button onclick="takeLoan(50000)" style="font-size:0.6rem; background:var(--red); width:100%; margin-top:5px;">ВЗЯТЬ 50к</button>
+        <button onclick="payLoan()" id="pay-btn" style="font-size:0.6rem; background:#238636; width:100%; margin-top:5px; display:none">ВЫПЛАТИТЬ</button>
+    </div>
+
+    <h3 style="font-family:'Orbitron'; font-size: 0.8rem; margin-top:20px;">ОБЪЕКТЫ</h3>
+    <div id="my-assets-list" style="flex-grow:1; overflow-y:auto; font-size:0.75rem;"></div>
 </aside>
 
 <main class="main" id="game-ui" style="display:none">
     <header>
-        <div class="stat-box"><span class="stat-val" id="ui-money" style="color:#4f4">0</span><br><small>КРЕДИТЫ (₮)</small></div>
-        <div class="stat-box"><span class="stat-val" id="ui-energy">0</span><br><small>ЭНЕРГИЯ (MWh)</small></div>
-        <div class="stat-box"><span class="stat-val" id="ui-price" style="color:var(--gold)">0</span><br><small>КУРС 100 MWh</small></div>
-        <div>
-            <button onclick="sellEnergy()" style="padding:15px 30px; font-size:1rem; border:2px solid var(--neon); background:transparent; color:var(--neon)">ПРОДАТЬ ВСЁ</button>
-        </div>
+        <div><span class="stat-val" id="ui-money">0</span> ₮</div>
+        <div><span class="stat-val" id="ui-energy">0</span> MWh</div>
+        <div><span class="stat-val" id="ui-price" style="color:var(--gold)">0</span> ₮/ед</div>
+        <button onclick="sellEnergy()" style="background:var(--neon); color:#000;">ПРОДАТЬ ЭНЕРГИЮ</button>
     </header>
 
-    <div class="content">
+    <div style="display:grid; grid-template-columns: 1fr 300px; background:#111;">
         <div class="scroll-area">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="font-family:'Orbitron'">РЫНОК ТЕХНОЛОГИЙ</h2>
-                <div>
-                    <button class="sec" onclick="showTab('shop')">МАГАЗИН</button>
-                    <button class="sec" onclick="showTab('market')">P2P РЫНОК</button>
-                    <button id="admin-btn" style="display:none; background:red;" onclick="showTab('admin')">ADMIN</button>
-                </div>
+            <div style="margin-bottom:20px;">
+                <button onclick="showTab('shop')">МАГАЗИН</button>
+                <button onclick="showTab('market')">РЫНОК</button>
+                <button id="admin-btn" style="display:none; background:red;" onclick="showTab('admin')">ADMIN</button>
             </div>
 
             <div id="shop-view" class="biz-grid"></div>
             
             <div id="market-view" style="display:none">
-                <h3>БИРЖА ИГРОКОВ</h3>
-                <div id="market-items"></div>
-                <div style="background:#111; padding:15px; margin-top:20px;">
-                    <h4>Выставить свой объект:</h4>
+                <div id="market-items" class="biz-grid"></div>
+                <div style="background:var(--card); padding:20px; margin-top:30px; border:1px solid var(--neon);">
+                    <h4>ВЫСТАВИТЬ НА ПРОДАЖУ</h4>
                     <select id="sell-asset-select" style="width:100%; padding:10px; background:#000; color:#fff;"></select>
-                    <input type="number" id="sell-price" placeholder="Цена" style="width:200px">
-                    <button onclick="createLot()">ПРОДАТЬ</button>
+                    <input type="number" id="sell-price" placeholder="Цена" style="width:200px; margin-top:10px;">
+                    <button onclick="createLot()">ВЫСТАВИТЬ</button>
                 </div>
             </div>
 
             <div id="admin-view" style="display:none">
-                <h3>ТЕРМИНАЛ XEONE</h3>
-                <input type="text" id="adm-target" placeholder="Ник игрока">
+                <h3>УПРАВЛЕНИЕ XEONE</h3>
+                <input type="text" id="adm-target" placeholder="Игрок">
                 <input type="number" id="adm-money" placeholder="Сумма">
-                <button onclick="adminAction('giveMoney')">НАЧИСЛИТЬ</button>
+                <button onclick="adminAction('giveMoney')">ДОБАВИТЬ ₮</button>
+                <input type="number" id="adm-price" placeholder="Курс">
+                <button onclick="adminAction('setPrice')">УСТАНОВИТЬ КУРС</button>
             </div>
         </div>
 
-        <div class="panel" style="background:#080a0f; padding:20px; border-left:1px solid #222; display:flex; flex-direction:column;">
-            <h3 style="font-family:'Orbitron'; font-size:0.9rem; color:var(--neon)">СВЯЗЬ</h3>
-            <div id="chat-box" style="flex-grow:1; overflow-y:auto; margin-bottom:10px; font-size:0.8rem;"></div>
+        <div style="background:#000; padding:15px; border-left:1px solid #222; display:flex; flex-direction:column;">
+            <div id="chat-box" style="flex-grow:1; overflow-y:auto;"></div>
             <input type="text" id="chat-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')sendChat()">
         </div>
     </div>
 
-    <footer style="background:#000; padding:10px 20px; font-size:0.7rem; color:#444; overflow:hidden;" id="log-box"></footer>
+    <footer id="log-box" style="background:#000; padding:10px; font-size:0.7rem; color:#555;"></footer>
 </main>
 
 <script>
-    let user = { username: '', password: '', money: 0, energy: 0, assets: [] };
-    let world = { marketLots: [], messages: [], events: [] };
+    let user = { username: '', password: '', money: 0, energy: 0, assets: [], loan: 0 };
+    let world = { marketLots: [], messages: [] };
     
-    // 12 бизнесов разного уровня
     const catalog = [
-        { id: 'b1', name: 'Гидропоника', cost: 5000, gen: 0, inc: 15, lvl: 1 },
-        { id: 'b2', name: 'Солнечный диск', cost: 12000, gen: 25, inc: 40, lvl: 1 },
-        { id: 'b3', name: 'Ветро-ферма', cost: 35000, gen: 80, inc: 120, lvl: 1 },
-        { id: 'b4', name: 'Скважина льда', cost: 80000, gen: 0, inc: 450, lvl: 2 },
-        { id: 'b5', name: 'Геотермальная СТ', cost: 180000, gen: 400, inc: 900, lvl: 2 },
-        { id: 'b6', name: 'Завод полимеров', cost: 450000, gen: -100, inc: 2800, lvl: 3 },
-        { id: 'b7', name: 'Реактор деления', cost: 1200000, gen: 2500, inc: 5000, lvl: 4 },
-        { id: 'b8', name: 'Лучевая башня', cost: 3000000, gen: 8000, inc: 12000, lvl: 5 },
-        { id: 'b9', name: 'Квантовый майнер', cost: 8000000, gen: -1000, inc: 45000, lvl: 5 },
-        { id: 'b10', name: 'Сингулярность', cost: 25000000, gen: 30000, inc: 150000, lvl: 6 },
-        { id: 'b11', name: 'Звездные врата', cost: 100000000, gen: 100000, inc: 500000, lvl: 10 },
-        { id: 'b12', name: 'Сфера Дайсона', cost: 999999999, gen: 1000000, inc: 5000000, lvl: 20 }
+        { id: 'b1', name: 'Гидропоника', cost: 8000, gen: 0, inc: 40 },
+        { id: 'b2', name: 'Солнечная панель', cost: 15000, gen: 40, inc: 60 },
+        { id: 'b3', name: 'Ветрогенератор', cost: 45000, gen: 120, inc: 150 },
+        { id: 'b4', name: 'Термо-шахта', cost: 120000, gen: -100, inc: 1000 },
+        { id: 'b5', name: 'Ядерный блок', cost: 900000, gen: 2500, inc: 5000 }
     ];
 
     async function handleAuth(action) {
@@ -134,42 +114,22 @@
             body: JSON.stringify({ username: u, password: p, action })
         });
         if(res.ok) {
-            user = await res.json(); user = {...user.user, username: u, password: p};
+            const d = await res.json(); 
+            user = {...d.user, username: u, password: p};
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('game-ui').style.display = 'grid';
             document.getElementById('sidebar-ui').style.display = 'flex';
             if(u === 'xeone') document.getElementById('admin-btn').style.display = 'inline';
             renderShop();
-            setInterval(gameTick, 500); // Быстрые тики (0.5 сек)
-            setInterval(sync, 2500);
-        } else alert("Доступ отклонен");
+            setInterval(() => {
+                user.assets.forEach(a => { user.money += a.inc/2; user.energy += a.gen/2; });
+                updateUI();
+            }, 500);
+            setInterval(sync, 3000);
+        } else alert("Ошибка входа");
     }
 
-    function renderShop() {
-        const div = document.getElementById('shop-view');
-        div.innerHTML = catalog.map(i => `
-            <div class="biz-card">
-                <span class="tag">LVL ${i.lvl}</span>
-                <h4 style="margin:10px 0 5px 0">${i.name}</h4>
-                <div style="font-size:0.7rem; color:#666">
-                    Доход: +${i.inc}₮/с<br>Энергия: ${i.gen > 0 ? '+' : ''}${i.gen}
-                </div>
-                <button class="buy" onclick="buy('${i.id}')" ${user.money < i.cost ? 'disabled' : ''}>
-                    ${i.cost.toLocaleString()} ₮
-                </button>
-            </div>
-        `).join('');
-    }
-
-    function buy(id) {
-        const item = catalog.find(x => x.id === id);
-        if(user.money >= item.cost) {
-            user.money -= item.cost;
-            user.assets.push({...item, iid: Date.now()});
-            addLog(`Приобретено: ${item.name}`);
-            renderShop();
-        }
-    }
+    function manualMine() { user.money += 10; updateUI(); }
 
     async function sync() {
         const res = await fetch('/api/sync', {
@@ -178,73 +138,90 @@
             body: JSON.stringify({ username: user.username, password: user.password, data: user })
         });
         world = await res.json();
+        const me = world.players[user.username];
+        user.money = me.money; user.energy = me.energy; user.assets = me.assets; user.loan = me.loan;
         updateUI();
     }
 
     function updateUI() {
         document.getElementById('ui-money').innerText = Math.floor(user.money).toLocaleString();
         document.getElementById('ui-energy').innerText = Math.floor(user.energy).toLocaleString();
-        document.getElementById('ui-price').innerText = Math.floor(world.globalPrice) + " ₮";
+        document.getElementById('ui-price').innerText = Math.floor(world.globalPrice);
+        document.getElementById('loan-info').innerText = `Долг: ${user.loan}₮`;
+        document.getElementById('pay-btn').style.display = user.loan > 0 ? 'block' : 'none';
         
-        document.getElementById('chat-box').innerHTML = world.messages.map(m => `
-            <div class="chat-msg"><b>${m.user}:</b> ${m.text}</div>
+        document.getElementById('my-assets-list').innerHTML = user.assets.map(a => `<div style="padding:5px; border-bottom:1px solid #111;">• ${a.name}</div>`).join('');
+        document.getElementById('sell-asset-select').innerHTML = user.assets.map((a,i) => `<option value="${i}">${a.name}</option>`).join('');
+
+        document.getElementById('market-items').innerHTML = world.marketLots.map(l => `
+            <div class="biz-card">
+                <b>${l.item.name}</b><br><small>Владелец: ${l.seller}</small>
+                <div style="color:var(--gold); margin:10px 0;">${l.price} ₮</div>
+                <button onclick="buyLot(${l.id})" style="width:100%">КУПИТЬ</button>
+            </div>
         `).join('');
 
-        document.getElementById('my-assets-list').innerHTML = user.assets.map(a => `<div>• ${a.name}</div>`).join('');
-        document.getElementById('player-list').innerHTML = "<b>ОНЛАЙН:</b><br>" + Object.keys(world.players).map(p => `• ${p}`).join('<br>');
-        document.getElementById('log-box').innerHTML = world.events.slice(-3).reverse().map(e => `<div>> ${e}</div>`).join('');
-        
-        // Обновляем селект для продажи
-        document.getElementById('sell-asset-select').innerHTML = user.assets.map((a,i) => `<option value="${i}">${a.name}</option>`).join('');
+        document.getElementById('chat-box').innerHTML = world.messages.map(m => `<div class="chat-line"><b>${m.user}:</b> ${m.text}</div>`).join('');
     }
 
-    function gameTick() {
-        user.assets.forEach(a => {
-            user.money += (a.inc / 2); // Делим на 2, т.к. тик 0.5 сек
-            user.energy += (a.gen / 2);
+    async function createLot() {
+        const idx = document.getElementById('sell-asset-select').value;
+        const price = document.getElementById('sell-price').value;
+        if(idx === "" || !price) return;
+        const lotItem = user.assets[idx];
+        user.assets.splice(idx, 1);
+        await fetch('/api/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: user.username, password: user.password, data: user, newLot: { item: lotItem, price: Number(price) } })
         });
-        updateUI();
+        sync();
+    }
+
+    async function buyLot(id) {
+        await fetch('/api/market/buy', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ buyerName: user.username, lotId: id })
+        });
+        sync();
+    }
+
+    function renderShop() {
+        document.getElementById('shop-view').innerHTML = catalog.map(i => `
+            <div class="biz-card">
+                <b>${i.name}</b><br><small>${i.cost}₮</small>
+                <button onclick="buy('${i.id}')" style="width:100%; margin-top:10px; background:#238636">КУПИТЬ</button>
+            </div>
+        `).join('');
+    }
+
+    function buy(id) {
+        const i = catalog.find(x => x.id === id);
+        if(user.money >= i.cost) { user.money -= i.cost; user.assets.push({...i, iid: Date.now()}); updateUI(); }
     }
 
     function sellEnergy() {
-        if(user.energy > 0) {
-            const amount = user.energy;
-            const price = (amount / 100) * world.globalPrice * 0.9; // 10% налог
-            user.energy = 0;
-            user.money += price;
-            addLog(`Продано ${Math.floor(amount)} MWh за ${Math.floor(price)} ₮`);
-        }
+        if(user.energy > 0) { user.money += (user.energy / 100) * world.globalPrice; user.energy = 0; }
     }
 
-    function showTab(t) {
+    async function takeLoan(a) { fetch('/api/loan', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user.username, amount:a})}).then(()=>sync()); }
+    function payLoan() { if(user.money >= user.loan) { user.money -= user.loan; user.loan = 0; sync(); } }
+    function showTab(t) { 
         document.getElementById('shop-view').style.display = t === 'shop' ? 'grid' : 'none';
         document.getElementById('market-view').style.display = t === 'market' ? 'block' : 'none';
         document.getElementById('admin-view').style.display = t === 'admin' ? 'block' : 'none';
     }
-
     function sendChat() {
         const i = document.getElementById('chat-input');
-        fetch('/api/sync', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: user.username, password: user.password, chatMsg: i.value, data: user })
-        });
+        fetch('/api/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user.username, password:user.password, chatMsg:i.value, data:user})});
         i.value = "";
     }
-
     async function adminAction(action) {
         const t = document.getElementById('adm-target').value;
-        const v = document.getElementById('adm-money').value;
-        await fetch('/api/admin/action', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ login: 'xeone', pass: '565811', action, target: t, value: v })
-        });
-    }
-
-    function addLog(m) {
-        world.events.push(m);
-        updateUI();
+        const v = document.getElementById('adm-money').value || document.getElementById('adm-price').value;
+        await fetch('/api/admin/action', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login:'xeone', pass:'565811', action, target:t, value:v})});
+        sync();
     }
 </script>
 </body>
