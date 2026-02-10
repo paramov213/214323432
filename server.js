@@ -6,30 +6,24 @@ app.use(express.json());
 app.use(express.static('public'));
 
 let worldState = {
-    settings: { multiplier: 0.8, taxRate: 0.15, volatility: 15 }, // Налог 15%, доходность ниже
-    globalPrice: 120,
+    settings: { taxRate: 0.10, volatility: 20 }, 
+    globalPrice: 135,
     marketLots: [],
     messages: [],
-    events: ["Экономический кризис: правительство ввело налог 15% на продажу энергии."],
+    events: ["Система Mars OS v2.0 инициализирована. Удачной колонизации!"],
     players: {} 
 };
 
 app.post('/api/auth', (req, res) => {
-    const { username, password, action, corp } = req.body;
-    
+    const { username, password, action } = req.body;
     if (action === 'register') {
         if (worldState.players[username]) return res.status(400).json({ m: "Имя занято" });
         worldState.players[username] = { 
-            password, 
-            money: 10000, // Уменьшено до 10к для хардкора
-            energy: 200, 
-            assets: [], 
-            corp: corp || "VOID", 
+            password, money: 20000, energy: 500, assets: [], 
             isAdmin: (username === 'xeone' && password === '565811')
         };
         return res.json({ user: worldState.players[username] });
     }
-    
     if (action === 'login') {
         const user = worldState.players[username];
         if (user && user.password === password) return res.json({ user });
@@ -49,42 +43,28 @@ app.post('/api/sync', (req, res) => {
     res.json(worldState);
 });
 
-app.post('/api/market/buy', (req, res) => {
-    const { buyerName, lotId } = req.body;
-    const lotIndex = worldState.marketLots.findIndex(l => l.id === lotId);
-    if (lotIndex === -1) return res.status(404).send();
-
-    const lot = worldState.marketLots[lotIndex];
-    const buyer = worldState.players[buyerName];
-    const seller = worldState.players[lot.seller];
-
-    if (buyer.money >= lot.price) {
-        buyer.money -= lot.price;
-        seller.money += lot.price;
-        buyer.assets.push(lot.item);
-        worldState.marketLots.splice(lotIndex, 1);
-        worldState.events.push(`[РЫНОК]: ${buyerName} выкупил актив у ${lot.seller}`);
-        res.json({ success: true });
-    } else {
-        res.status(400).send("Недостаточно средств");
-    }
-});
-
 app.post('/api/admin/action', (req, res) => {
     const { login, pass, action, target, value } = req.body;
     if (login !== 'xeone' || pass !== '565811') return res.status(403).send();
-
     if (action === 'setPrice') worldState.globalPrice = Number(value);
-    if (action === 'setTax') worldState.settings.taxRate = Number(value) / 100;
     if (action === 'giveMoney') worldState.players[target].money += Number(value);
-    
+    if (action === 'clearChat') worldState.messages = [];
     res.json({ success: true, world: worldState });
 });
 
-// Плавное изменение цен
+// Экономика и случайные события
 setInterval(() => {
-    let drift = (Math.random() - 0.5) * worldState.settings.volatility;
-    worldState.globalPrice = Math.max(10, worldState.globalPrice + drift);
-}, 10000);
+    worldState.globalPrice = Math.max(15, worldState.globalPrice + (Math.random() - 0.5) * worldState.settings.volatility);
+    
+    // Случайное событие раз в 2 минуты
+    if (Math.random() > 0.95) {
+        const evs = ["Солнечная вспышка! Цена на энергию растет!", "Обвал акций Марса!", "Правительственные субсидии всем колонистам!"];
+        const ev = evs[Math.floor(Math.random()*evs.length)];
+        worldState.events.push(`[ВНИМАНИЕ]: ${ev}`);
+        if (ev.includes("растет")) worldState.globalPrice += 50;
+    }
+    if (worldState.events.length > 15) worldState.events.shift();
+    if (worldState.messages.length > 50) worldState.messages.shift();
+}, 8000);
 
-app.listen(PORT, () => console.log(`Mars 1.9 HARDCORE Online`));
+app.listen(PORT, () => console.log(`Mars 2.0 Imperial Online`));
