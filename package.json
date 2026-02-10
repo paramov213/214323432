@@ -1,12 +1,8 @@
 {
   "name": "colony-energy-game",
-  "version": "1.5.0",
-  "description": "Hard Sci-Fi Colony Simulator: Corporations & Grid Raids",
+  "version": "1.8.0",
+  "description": "Mars Ultimate: Market & Auth Update",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  }
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.18.2" }
 }
