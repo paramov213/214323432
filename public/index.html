@@ -2,178 +2,163 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Colony Game v2</title>
+    <title>MARS COLONY v1.5 - Corp Wars</title>
     <style>
-        :root { --neon: #00f2ff; --pink: #ff0055; --gold: #ffcc00; --bg: #0d1117; }
-        body { background: var(--bg); color: #c9d1d9; font-family: 'Segoe UI', sans-serif; margin: 0; }
-        .grid { display: grid; grid-template-columns: 300px 1fr 350px; gap: 20px; padding: 20px; }
-        .card { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; }
-        .stat-box { font-size: 1.2rem; margin-bottom: 10px; }
-        .val { color: var(--neon); font-weight: bold; }
-        button { background: #21262d; color: white; border: 1px solid #f0f6fc1a; padding: 10px; cursor: pointer; width: 100%; border-radius: 6px; margin: 5px 0; }
-        button:hover { background: #30363d; border-color: var(--neon); }
-        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .admin-only { border: 2px solid var(--gold); display: none; margin-top: 15px; }
-        .banned { display: none; text-align: center; color: var(--pink); font-size: 3rem; margin-top: 20%; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono&display=swap');
+        :root { --neon: #00f2ff; --danger: #ff0055; --bg: #05070a; }
+        body { background: var(--bg); color: #e6edf3; font-family: 'Roboto Mono', monospace; margin: 0; }
+        .app-shell { display: grid; grid-template-rows: 60px 1fr 200px; height: 100vh; }
+        header { display: flex; justify-content: space-around; align-items: center; background: #0d1117; border-bottom: 2px solid var(--neon); }
+        .main-content { display: grid; grid-template-columns: 350px 1fr 350px; background: #161b22; gap: 1px; }
+        .panel { background: #0d1117; padding: 15px; overflow-y: auto; border: 1px solid #30363d; }
+        
+        .shield-bar { height: 5px; background: #333; margin-top: 5px; }
+        .shield-fill { height: 100%; background: var(--neon); transition: width 0.3s; }
+        .corp-tag { font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; }
+
+        button { background: #21262d; color: white; border: 1px solid #444; padding: 10px; cursor: pointer; font-family: 'Orbitron'; margin: 5px 0; width: 100%; }
+        button:hover { border-color: var(--neon); }
+        .stat-val { font-family: 'Orbitron'; color: var(--neon); }
+        #auth-screen { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
 <div id="auth-screen">
-    <div class="card" style="width: 300px; text-align: center;">
-        <h2>Вход в Систему</h2>
-        <input type="text" id="username-input" placeholder="Ваш позывной..." style="padding: 10px; width: 80%;">
-        <button onclick="login()">Начать Колонизацию</button>
+    <div style="text-align:center; border: 1px solid var(--neon); padding: 40px; background: #0d1117;">
+        <h2 style="font-family:'Orbitron';">SELECT CORPORATION</h2>
+        <input type="text" id="username-input" placeholder="LOGIN_ID" style="padding:10px; margin-bottom:10px;"><br>
+        <select id="corp-select" style="padding:10px; width:100%; background:#000; color:#fff;">
+            <option value="ARES">ARES (Red)</option>
+            <option value="NEBULA">NEBULA (Green)</option>
+            <option value="VOID">VOID (Cyan)</option>
+        </select><br><br>
+        <button onclick="login()">ESTABLISH LINK</button>
     </div>
 </div>
 
-<div id="ban-screen" class="banned">ВЫ ИЗГНАНЫ ИЗ КОЛОНИИ (BANNED)</div>
-
-<div id="game-ui" style="display:none;">
-    <header style="padding: 20px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between;">
-        <div class="stat-box">Колонист: <span id="display-name" class="val">?</span></div>
-        <div class="stat-box">Баланс: <span id="display-money" class="val" style="color:#4f4">0</span> ₮</div>
-        <div class="stat-box">Энергия: <span id="display-energy" class="val">0</span> MWh</div>
-        <button onclick="showAdmin()" style="width: auto;">Admin</button>
+<div class="app-shell">
+    <header>
+        <div>USER: <span id="name-tag" class="stat-val">-</span> <span id="corp-tag" class="corp-tag"></span></div>
+        <div>CASH: <span id="stat-money" class="stat-val" style="color:#4f4">0</span> ₮</div>
+        <div style="width:150px;">SHIELD: <div class="shield-bar"><div id="shield-fill" class="shield-fill"></div></div></div>
     </header>
 
-    <div class="grid">
-        <div class="card">
-            <h3>Промышленность</h3>
-            <button onclick="buyAsset('Mini-Solar', 1200, 15, 40)">Солнечная панель (1200₮)</button>
-            <button onclick="buyAsset('Wind-Turbine', 3000, 40, 100)">Ветряк (3000₮)</button>
-            <button onclick="buyAsset('Nuclear-Cell', 15000, 500, 1000)">Ядерная ячейка (15к ₮)</button>
-            <hr style="border-color: #333;">
-            <div id="asset-list"></div>
+    <div class="main-content">
+        <div class="panel">
+            <h3>FACTORY</h3>
+            <button onclick="buy('Solar-T2', 5000, 40, 100)">Solar T2 (5k₮)</button>
+            <button onclick="buy('Shield-Gen', 10000, 0, 0)">Repair Shield (10k₮)</button>
+            <div id="assets-list"></div>
         </div>
 
-        <div class="card">
-            <h3>Глобальный Рынок</h3>
-            <div style="text-align: center; font-size: 4rem; margin: 20px 0;" id="market-price">0 ₮</div>
-            <p>Текущий множитель дохода: <span id="display-mult" class="val">1</span>x</p>
-            <button onclick="sellEnergy()" style="height: 60px; font-size: 1.2rem; color: #4f4;">ПРОДАТЬ 50 MWh</button>
-            <div id="log-box" style="height: 150px; overflow-y: auto; background: #000; padding: 10px; font-size: 0.8rem; margin-top: 20px;"></div>
+        <div class="panel" style="display:flex; flex-direction:column;">
+            <h3 id="price-val" style="text-align:center; font-size:2rem;">0 ₮</h3>
+            <button onclick="sellEnergy()" style="background:var(--neon); color:#000;">SELL 100 MWh</button>
+            <div id="chat-window" style="flex-grow:1; background:#000; margin:10px 0; padding:5px; font-size:0.8rem; overflow-y:auto;"></div>
+            <input type="text" id="chat-input" placeholder="Communicate..." onkeydown="if(event.key==='Enter')sendChat()">
         </div>
 
-        <div class="card">
-            <h3>Список игроков (Live)</h3>
+        <div class="panel">
+            <h3>GRID RAIDS (TARGETS)</h3>
             <div id="player-list"></div>
-            
-            <div id="admin-panel" class="card admin-only">
-                <h4 style="color: var(--gold);">Console: Admin</h4>
-                <input type="text" id="admin-target" placeholder="Имя игрока">
-                <button onclick="adminAction('ban')">Забанить</button>
-                <button onclick="adminAction('giveMoney', 50000)">Дать 50к ₮</button>
-                <button onclick="adminAction('setMultiplier', 10)">Включить X10</button>
-            </div>
         </div>
     </div>
+
+    <div class="panel" id="log-box" style="background:#000; color:#888; font-size:0.8rem;"></div>
 </div>
 
+
+
 <script>
-    let currentUser = null;
-    let localPlayer = { money: 0, energy: 0, assets: [] };
-    let world = {};
-    let adminPass = "";
+    let user = { username: '', money: 0, energy: 0, assets: [], shield: 100 };
+    let world = { messages: [] };
+    let nextChatMsg = "";
+    let raidTarget = null;
 
     async function login() {
         const name = document.getElementById('username-input').value;
+        const corp = document.getElementById('corp-select').value;
         if (!name) return;
         const res = await fetch('/api/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: name })
+            body: JSON.stringify({ username: name, corp })
         });
         const data = await res.json();
-        currentUser = name;
-        localPlayer = data.user;
+        user = { ...user, ...data.user };
         document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-ui').style.display = 'block';
-        document.getElementById('display-name').innerText = name;
-        startLoops();
+        document.getElementById('name-tag').innerText = name;
+        document.getElementById('corp-tag').innerText = corp;
+        setInterval(gameLoop, 1000);
+        setInterval(sync, 2000);
     }
 
-    function buyAsset(name, cost, gen, inc) {
-        if (localPlayer.money >= cost) {
-            localPlayer.money -= cost;
-            localPlayer.assets.push({ name, gen, inc });
-            addLog(`Куплено: ${name}`);
+    function buy(name, cost, gen, inc) {
+        if (name === 'Shield-Gen' && user.money >= 10000) {
+            user.money -= 10000; user.shield = 100; return;
+        }
+        if (user.money >= cost) {
+            user.money -= cost;
+            user.assets.push({ name, gen, inc, id: Date.now() });
         }
     }
 
-    function sellEnergy() {
-        if (localPlayer.energy >= 50) {
-            localPlayer.energy -= 50;
-            localPlayer.money += 50 * world.globalPrice;
-            addLog(`Продано 50 MWh за ${Math.floor(50 * world.globalPrice)}₮`);
-        }
+    function startRaid(target) {
+        raidTarget = target;
+        setTimeout(() => { raidTarget = null; }, 2000);
     }
 
     async function sync() {
-        try {
-            const res = await fetch('/api/sync', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username: currentUser, data: localPlayer })
-            });
-            const data = await res.json();
-            if (data.banned) {
-                document.getElementById('game-ui').style.display = 'none';
-                document.getElementById('ban-screen').style.display = 'block';
-                return;
-            }
-            world = data;
-            updateUI();
-        } catch(e) { console.log("Sync error"); }
+        const res = await fetch('/api/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: user.username, data: user, chatMsg: nextChatMsg, raidTarget })
+        });
+        nextChatMsg = ""; raidTarget = null;
+        world = await res.json();
+        user.shield = world.players[user.username].shield;
+        user.money = world.players[user.username].money;
+        updateUI();
     }
 
     function updateUI() {
-        document.getElementById('display-money').innerText = Math.floor(localPlayer.money);
-        document.getElementById('display-energy').innerText = Math.floor(localPlayer.energy);
-        document.getElementById('market-price').innerText = Math.floor(world.globalPrice) + ' ₮';
-        document.getElementById('display-mult').innerText = world.multiplier;
+        document.getElementById('stat-money').innerText = Math.floor(user.money);
+        document.getElementById('price-val').innerText = Math.floor(world.globalPrice) + ' ₮';
+        document.getElementById('shield-fill').style.width = user.shield + '%';
         
-        // Список активов
-        document.getElementById('asset-list').innerHTML = localPlayer.assets.map(a => 
-            `<div style="font-size:0.8rem; border-bottom:1px solid #333">${a.name} (+${a.inc}₮/с)</div>`).join('');
+        const chat = document.getElementById('chat-window');
+        chat.innerHTML = world.messages.map(m => `<div><b>${m.user}:</b> ${m.text}</div>`).join('');
+        chat.scrollTop = chat.scrollHeight;
 
-        // События
-        document.getElementById('log-box').innerHTML = world.events.map(e => `<div>> ${e}</div>`).reverse().join('');
+        document.getElementById('player-list').innerHTML = Object.keys(world.players).map(p => {
+            if(p === user.username) return '';
+            return `<div style="border-bottom:1px solid #333; padding:5px;">
+                ${p} [${world.players[p].corp}]
+                <button onclick="startRaid('${p}')" style="font-size:0.6rem; padding:2px;">RAID GRID</button>
+            </div>`;
+        }).join('');
 
-        // Список игроков
-        document.getElementById('player-list').innerHTML = Object.keys(world.players).map(p => 
-            `<div>${p} - ${Math.floor(world.players[p].money)}₮ ${world.players[p].isBanned ? '❌' : '✅'}</div>`).join('');
+        document.getElementById('log-box').innerHTML = world.events.slice(-5).map(e => `<div>> ${e}</div>`).reverse().join('');
     }
 
-    function addLog(msg) {
-        const lb = document.getElementById('log-box');
-        lb.innerHTML = `<div>> ${msg}</div>` + lb.innerHTML;
+    function sendChat() {
+        nextChatMsg = document.getElementById('chat-input').value;
+        document.getElementById('chat-input').value = "";
     }
 
-    function showAdmin() {
-        adminPass = prompt("Admin Password?");
-        if (adminPass === 'admin1337') document.getElementById('admin-panel').style.display = 'block';
+    function sellEnergy() {
+        if (user.energy >= 100) {
+            user.energy -= 100;
+            user.money += (world.globalPrice * 100) * (1 - world.settings.taxRate);
+        }
     }
 
-    async function adminAction(command, value = null) {
-        const target = document.getElementById('admin-target').value;
-        await fetch('/api/admin/command', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ password: adminPass, command, target, value: value || 10 })
+    function gameLoop() {
+        user.assets.forEach(a => {
+            user.energy += a.gen / 10;
+            user.money += (a.inc * world.settings.multiplier) / 10;
         });
-        sync();
-    }
-
-    function startLoops() {
-        setInterval(() => {
-            localPlayer.assets.forEach(a => {
-                localPlayer.energy += a.gen / 10;
-                localPlayer.money += (a.inc * world.multiplier) / 10;
-            });
-            updateUI();
-        }, 1000);
-        setInterval(sync, 2000); // Синхрон с сервером каждые 2 сек
     }
 </script>
 </body>
